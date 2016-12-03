@@ -16,8 +16,11 @@ public class Main
 		//The actual textbox
 		private JLabel text;
 		
-		//The time when the textbox will close
-		private long closeTime;
+		//Number of words "left" to display
+		private int words;
+		
+		//Whether a delay is already counting down words
+		private boolean counting;
 		
 		//Create the textbox
 		public Textbox()
@@ -26,34 +29,52 @@ public class Main
 			text = new JLabel();
 			text.setPreferredSize(new Dimension(300, 200));
 			this.add(text); //add the textbox to the panel
-			//set closeTime to the current time
-			closeTime = System.currentTimeMillis();
+			counting = false;
 		}
 		
-		public void setText(String text)
+		public void setText(String in)
 		{
 			//calculate the number of words
-			int words = text.split(" |(<br />)").length;
-			//set close time to (words * 250) ms from now
-			closeTime = System.currentTimeMillis() + (words * 250);
-			//update the textbox's text
-			this.text.setText(text);
+			words = in.split(" |(<br />)").length;
+			new Thread(new Runnable()
+			{
+				//Whether this instance counts down
+				private boolean count;
+				
+				@Override
+				public void run()
+				{
+					//If the textbox isn't already counting, this thread does.
+					if(!Textbox.this.counting) { count = true; Textbox.this.counting = true; }
+					else { count = false; }
+					
+					//update the textbox's text
+					text.setText(in);
+					(Textbox.this).repaint();
+					//Loop while there are words "left"
+					while(words>0)
+					{
+						try
+						{
+							Thread.sleep(250);
+						}
+						catch (InterruptedException e){}
+						
+						//If the thread is counting, decrement the counter
+						if(count) { words--; }
+					}
+					//Stops counting
+					if(count) { Textbox.this.counting = false; }
+					closeText();
+				}
+			}).start();
+			
 		}
 		
 		public void closeText()
 		{
 			//blank the text
 			text.setText("");
-		}
-		
-		public void update()
-		{
-			//If its after the time to close the box, close it
-			if(System.currentTimeMillis() > closeTime)
-			{
-				//System.out.println("close");
-				closeText();
-			}
 		}
 	}
 	
@@ -98,13 +119,6 @@ public class Main
 		frame.pack();
 		frame.setLocationRelativeTo(null);
 		frame.setVisible(true);
-		
-		while(true)
-		{
-			//update the textbox
-			tb.update();
-			Thread.yield();
-		}
 	}
 
 }
